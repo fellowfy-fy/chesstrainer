@@ -1,0 +1,7 @@
+chessvenv
+
+/src/dist
+/src/app.spec
+/src/stockfish.exe
+/src/build/
+__pycache__
