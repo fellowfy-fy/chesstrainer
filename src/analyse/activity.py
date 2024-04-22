@@ -6,12 +6,12 @@ import pandas as pd
 
 def evaluate_activity(board):
     metrics = {
-        'white': {'mobility': 0, 'aggression': 0, 'interaction': 0, 'territory': 0, 'safety': 0, 'centralization': 0},
-        'black': {'mobility': 0, 'aggression': 0, 'interaction': 0, 'territory': 0, 'safety': 0, 'centralization': 0}
+        'Белые': {'Мобильность': 0, 'Агрессия': 0, 'Взаимодействие': 0, 'Территория': 0, 'Безопасность': 0, 'Централизация': 0},
+        'Чёрные': {'Мобильность': 0, 'Агрессия': 0, 'Взаимодействие': 0, 'Территория': 0, 'Безопасность': 0, 'Централизация': 0}
     }
     
     for color in [chess.WHITE, chess.BLACK]:
-        color_str = 'white' if color == chess.WHITE else 'black'
+        color_str = 'Белые' if color == chess.WHITE else 'Чёрные'
         
         # Обходим все типы фигур
         for piece_type in chess.PIECE_TYPES:
@@ -21,19 +21,19 @@ def evaluate_activity(board):
                 for target_square in moves:
                     move = chess.Move(square, target_square)
                     if board.is_capture(move):
-                        metrics[color_str]['aggression'] += 1
+                        metrics[color_str]['Агрессия'] += 1
                     if board.piece_at(target_square) and board.piece_at(target_square).color != color:
-                        metrics[color_str]['interaction'] += 1
+                        metrics[color_str]['Взаимодействие'] += 1
 
-                    metrics[color_str]['mobility'] += 1  # увеличиваем мобильность за каждый доступный ход
+                    metrics[color_str]['Мобильность'] += 1  # увеличиваем мобильность за каждый доступный ход
                     if board.piece_at(target_square) is None:
-                        metrics[color_str]['territory'] += 1  # клетка под контролем, если она пуста
+                        metrics[color_str]['Территория'] += 1  # клетка под контролем, если она пуста
 
                     if square in [chess.D4, chess.E4, chess.D5, chess.E5]:
-                        metrics[color_str]['centralization'] += 1  # фигура в центре
+                        metrics[color_str]['Централизация'] += 1  # фигура в центре
 
                 # Подсчет атакующих фигур для каждой фигуры
                 attackers = board.attackers(not color, square)
-                metrics[color_str]['safety'] += len(attackers)
+                metrics[color_str]['Безопасность'] += len(attackers)
 
     return metrics

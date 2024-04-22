@@ -59,7 +59,28 @@ def generate_moves_table(board):
     return df
 
 
-
+def gather_metrics_data(ideal_pieces, dangerous_pawns, candidate_moves, board):
+    # Сбор данных в структурированный список для создания DataFrame
+    data = {
+        "Category": [],
+        "Details": []
+    }
+    
+    # Идеальные фигуры
+    for color, pieces in ideal_pieces.items():
+        data["Category"].append(f"Ideal Pieces {color.capitalize()}")
+        data["Details"].append(', '.join(pieces))
+    
+    # Опасные пешки
+    for color, pawns in dangerous_pawns.items():
+        data["Category"].append(f"Dangerous Pawns {color.capitalize()}")
+        data["Details"].append(', '.join(pawns))
+    
+    # Ходы-кандидаты
+    data["Category"].append("Candidate Moves")
+    data["Details"].append(', '.join([board.san(move) for move in candidate_moves]))
+    
+    return pd.DataFrame(data)
 
 
 
@@ -103,14 +124,14 @@ async def main():
         # Создание DataFrame из каждого набора метрик
         print(df_moves)
         activity_data = {
-            "Metric": [],
-            "White": [],
-            "Black": []
+            "Параметр": [],
+            "Белые": [],
+            "Чёрные": []
         }
-        for key in activity_metrics['white']:
-            activity_data["Metric"].append(key)
-            activity_data["White"].append(activity_metrics['white'][key])
-            activity_data["Black"].append(activity_metrics['black'][key])
+        for key in activity_metrics['Белые']:
+            activity_data["Параметр"].append(key)
+            activity_data["Белые"].append(activity_metrics['Белые'][key])
+            activity_data["Чёрные"].append(activity_metrics['Чёрные'][key])
         
         # Обработка данных пешечной структуры
         pawn_structure_data = {
@@ -141,7 +162,7 @@ async def main():
         king_safety_df = pd.DataFrame(king_safety_data)
         data_items = list(flank_activity.items()) + [('Stage', stage), ('White Material', white_material), ('Black Material', black_material)]
         flank_df = pd.DataFrame(data_items, columns=['Category', 'Value'])
-
+        df_metrics = gather_metrics_data(ideal_pieces, dangerous_pawns, candidate_moves, board)
         # Сохранение всех DataFrame в один файл Excel с разными листами
         with pd.ExcelWriter("chess_metrics.xlsx", engine='openpyxl', mode='w') as writer:
             save_df_to_excel(fen_df, writer, "FEN")
@@ -149,6 +170,7 @@ async def main():
             save_df_to_excel(pawn_structure_df, writer, "Pawn Structure Metrics")
             save_df_to_excel(king_safety_df, writer, "King Safety Metrics")
             save_df_to_excel(flank_df, writer, "Flank Activity")
+            df_metrics.to_excel(writer, sheet_name="Analysis Metrics")
             save_df_to_excel(df_moves, writer, "Moves")
     finally:
         await engine.quit()
