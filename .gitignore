@@ -5,5 +5,7 @@ chessvenv
 /src/stockfish.exe
 /src/build/
 __pycache__
+test.py
+chess_metrics.xlsx
 
 *.zip

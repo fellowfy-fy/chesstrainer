@@ -8,6 +8,8 @@ def save_df_to_excel(df, writer, sheet_name):
     df.to_excel(writer, sheet_name=sheet_name, index=False)
 
 
+
+
 def auto_adjust_columns(writer):
     for sheetname in writer.sheets:
         worksheet = writer.sheets[sheetname]
@@ -22,3 +24,27 @@ def auto_adjust_columns(writer):
                     pass
             adjusted_width = (max_length + 2) * 1.2
             worksheet.column_dimensions[column].width = adjusted_width
+
+
+def gather_metrics_data(ideal_pieces, dangerous_pawns, candidate_moves, board):
+    # Сбор данных в структурированный список для создания DataFrame
+    data = {
+        "Категория": [],
+        "Значение": []
+    }
+    
+    # Идеальные фигуры
+    for color, pieces in ideal_pieces.items():
+        data["Категория"].append(f"Идеальные фигуры {color.capitalize()}")
+        data["Значение"].append(', '.join(pieces))
+    
+    # Опасные пешки
+    for color, pawns in dangerous_pawns.items():
+        data["Категория"].append(f"Опасные пешки {color.capitalize()}")
+        data["Значение"].append(', '.join(pawns))
+    
+    # Ходы-кандидаты
+    data["Категория"].append("Ходы-кандидаты")
+    data["Значение"].append(', '.join([board.san(move) for move in candidate_moves]))
+    
+    return pd.DataFrame(data, columns=['Категория', 'Значение'])
