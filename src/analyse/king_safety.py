@@ -32,13 +32,13 @@ def evaluate_king_safety(board, color):
     opponent_attacks = any(board.is_attacked_by(not color, sq) for sq in king_zone)
     
     return {
-        "pawn_cover_percent": pawn_cover,
-        "in_check": in_check,
-        "checkmate": checkmate,
-        "queens_present": queens_present,
-        "rank_distance_percent": rank_distance,
-        "freedom_percent": freedom_percentage,
-        "opponent_attacking": opponent_attacks
+        "Пешечное прикрытие": pawn_cover,
+        "Шах": in_check,
+        "Мат": checkmate,
+        "Наличие ферзей": queens_present,
+        "Близость к своей линии": rank_distance,
+        "Свобода": freedom_percentage,
+        "Атака противника": opponent_attacks
     }
 
 def evaluate_king_safety_for_both_sides(board):
@@ -47,5 +47,5 @@ def evaluate_king_safety_for_both_sides(board):
     black_safety = evaluate_king_safety(board, chess.BLACK)
     
     # Объединение результатов в один словарь
-    safety_metrics = {'white': white_safety, 'black': black_safety}
+    safety_metrics = {'Белые': white_safety, 'Чёрные': black_safety}
     return safety_metrics

@@ -1,7 +1,7 @@
 import chess
 
 def evaluate_dangerous_pawns(board):
-    dangerous_pawns = {'white': [], 'black': []}
+    dangerous_pawns = {'Белые': [], 'Чёрные': []}
     piece_values = {
         chess.PAWN: 1,
         chess.KNIGHT: 3,
@@ -29,7 +29,7 @@ def evaluate_dangerous_pawns(board):
 
     # Анализ каждой пешки на доске
     for color in [chess.WHITE, chess.BLACK]:
-        color_name = 'white' if color == chess.WHITE else 'black'
+        color_name = 'Белые' if color == chess.WHITE else 'Чёрные'
         for square in board.pieces(chess.PAWN, color):
             score = 0
 

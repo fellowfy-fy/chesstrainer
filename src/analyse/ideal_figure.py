@@ -7,7 +7,7 @@ def evaluate_ideal_pieces(board):
     CENTER_RANKS = chess.BB_RANK_3 | chess.BB_RANK_4 | chess.BB_RANK_5 | chess.BB_RANK_6
     CENTER_SQUARES = CENTER_FILES & CENTER_RANKS
     
-    piece_scores = {'white': {}, 'black': {}}
+    piece_scores = {'Белые': {}, 'Чёрные': {}}
     piece_values = {
         chess.PAWN: 1,
         chess.KNIGHT: 3,
@@ -18,7 +18,7 @@ def evaluate_ideal_pieces(board):
     
     # Анализ каждой фигуры на доске
     for color in [chess.WHITE, chess.BLACK]:
-        color_name = 'white' if color == chess.WHITE else 'black'
+        color_name = 'Белые' if color == chess.WHITE else 'Чёрные'
         for piece_type in piece_values.keys():
             pieces = board.pieces(piece_type, color)
             for square in pieces:
@@ -45,7 +45,7 @@ def evaluate_ideal_pieces(board):
                 piece_scores[color_name][chess.square_name(square)] = score
 
     # Определение идеальных фигур
-    ideal_pieces = {'white': [], 'black': []}
+    ideal_pieces = {'Белые': [], 'Чёрные': []}
     for color, scores in piece_scores.items():
         max_score = max(scores.values(), default=0)
         ideal_pieces[color] = [square for square, score in scores.items() if score == max_score]

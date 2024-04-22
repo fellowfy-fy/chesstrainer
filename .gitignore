@@ -5,3 +5,5 @@ chessvenv
 /src/stockfish.exe
 /src/build/
 __pycache__
+
+*.zip
