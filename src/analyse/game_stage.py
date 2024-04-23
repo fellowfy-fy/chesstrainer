@@ -7,6 +7,6 @@ def determine_game_stage(board):
     if total_material >= 30:
         return "Дебют"
     elif 16 < total_material < 30:
-        return "Миттельшпиль"
+        return "Стратегическая"
     else:
-        return "Эндшпиль"
+        return "Окончание"

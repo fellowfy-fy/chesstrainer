@@ -1,8 +1,16 @@
 import chess
 import pandas as pd
 
-
 def generate_moves_table(board):
+    piece_names = {
+        'P': 'Пешка',
+        'N': 'Конь',
+        'B': 'Слон',
+        'R': 'Ладья',
+        'Q': 'Ферзь',
+        'K': 'Король'
+    }
+
     moves_white = []
     moves_black = []
 
@@ -13,14 +21,18 @@ def generate_moves_table(board):
     board.turn = chess.WHITE
     for move in board.legal_moves:
         board.push(move)
-        moves_white.append(f"{board.piece_at(move.to_square).symbol()} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
+        piece = board.piece_at(move.to_square)
+        piece_name = piece_names[piece.symbol().upper()] if piece else "None"
+        moves_white.append(f"{piece_name} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
         board.pop()
 
     # Генерация ходов для черных
     board.turn = chess.BLACK
     for move in board.legal_moves:
         board.push(move)
-        moves_black.append(f"{board.piece_at(move.to_square).symbol()} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
+        piece = board.piece_at(move.to_square)
+        piece_name = piece_names[piece.symbol().upper()] if piece else "None"
+        moves_black.append(f"{piece_name} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
         board.pop()
 
     # Возвращаем доску в исходное состояние

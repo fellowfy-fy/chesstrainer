@@ -10,7 +10,7 @@ def evaluate_king_safety(board, color):
     
     # 1. Пешечное прикрытие в процентах
     own_pawns = board.pieces(chess.PAWN, color)
-    pawn_cover = len(king_zone & own_pawns) / len(king_zone) * 100
+    pawn_cover = round(len(king_zone & own_pawns) / len(king_zone) * 100, 2)
     
     # 2. Угрозы в шах и мат
     in_check = board.is_check()
@@ -21,12 +21,12 @@ def evaluate_king_safety(board, color):
     
     # 4. Близость к своей линии в процентах
     king_rank = chess.square_rank(king_square)
-    rank_distance = abs(king_rank - (0 if color == chess.WHITE else 7)) / 7 * 100
+    rank_distance = round(abs(king_rank - (0 if color == chess.WHITE else 7)) / 7 * 100, 2)
     
     # 5. Свобода в процентах
     legal_moves = len(list(board.legal_moves))
     king_moves = len([move for move in board.legal_moves if move.from_square == king_square])
-    freedom_percentage = (king_moves / legal_moves * 100) if legal_moves else 0
+    freedom_percentage = round((king_moves / legal_moves * 100) if legal_moves else 0, 2)
     
     # 6. Атака противника
     opponent_attacks = any(board.is_attacked_by(not color, sq) for sq in king_zone)

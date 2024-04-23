@@ -7,6 +7,9 @@ import os
 import pandas as pd
 import random
 from concurrent.futures import ThreadPoolExecutor
+import subprocess
+import sys
+from tabulate import tabulate
 
 # Место для ваших функций анализа
 from analyse.activity import evaluate_activity
@@ -23,6 +26,11 @@ from excel import save_df_to_excel, auto_adjust_columns, gather_metrics_data
 # Путь к движку и загрузка данных
 engine_path = os.path.join(os.path.dirname(__file__), "stockfish")
 
+def format_dataframe(df):
+    # Замена NaN на пустую строку
+
+    # Преобразование DataFrame в строку с индексами и заголовками
+    return df.to_string(header=False)
 def update_gui_with_results(tab_control, results):
     global analysis_data
     analysis_data = results  # Сохраняем результаты для последующего использования
@@ -46,7 +54,14 @@ def update_gui_with_results(tab_control, results):
             text.pack(expand=True, fill=tk.BOTH)
 
 async def run_chess_analysis(engine_path, fen, canvas):
-    transport, engine = await chess.engine.popen_uci(engine_path)
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    si.wShowWindow = subprocess.SW_HIDE
+    transport, engine = await chess.engine.popen_uci(
+        engine_path,
+        startupinfo=si,  # Добавляем информацию о старте
+        creationflags=subprocess.CREATE_NO_WINDOW  # Добавляем флаг для предотвращения появления окна
+    )
     try:
         global board
         global FEN
@@ -65,17 +80,33 @@ async def run_chess_analysis(engine_path, fen, canvas):
         df_moves = generate_moves_table(board)
         candidate_moves = find_candidate_moves(board)
         draw_board(canvas, board)
+
+        general_info = pd.DataFrame({
+            "Метрика": {
+            "Материал Белых": white_material,
+            "Материал Чёрных": black_material,
+            "Стадия": stage,
+            "Ферзевый фланг": flank_activity["ферзевый фланг"],
+            "Центр": flank_activity["центр"],
+            "Королевский фланг": flank_activity["королевский фланг"],
+            }
+        }, columns = ['Метрика'])
+        
+        figures_info = pd.DataFrame({
+            "Метрика":{
+            "Идеальные фигуры Белые": [', '.join(ideal_pieces.get('Белые', []))],
+            "Идеальные фигуры Чёрные": [', '.join(ideal_pieces.get('Чёрные', []))],
+            "Опасные пешки Белые": [', '.join(dangerous_pawns.get('Белые', []))],
+            "Опасные пешки Чёрные": [', '.join(dangerous_pawns.get('Чёрные', []))],
+            "Ходы-кандидаты": candidate_moves  # Добавляем как единственную строку}
+        }}, columns = ['Метрика'])
         return {
             "Активность": pd.DataFrame(activity_metrics, columns = ['Белые', 'Чёрные']),
             "Структура пешек": pd.DataFrame(pawns_analysis, columns = ['Белые', 'Чёрные']),
             "Безопасность короля": pd.DataFrame(king_safety_metrics),
-            "Материал": f"Белые: {white_material}, Чёрные: {black_material}",
-            "Атаки": flank_activity,
-            "Стадии": stage,
-            "Идеальные фигуры": ideal_pieces,
-            "Опасные пешки": dangerous_pawns,
+            "Общая информация": general_info,
+            "Фигуры": figures_info,
             "Ходы": df_moves,
-            "Ходы-кандидаты":candidate_moves,
         }
     finally:
         await engine.quit()
@@ -105,11 +136,11 @@ def save_to_excel():
         activity_df = analysis_data["Активность"].reset_index().rename(columns={'index': 'Параметр'})
         pawn_structure_df = analysis_data["Структура пешек"].reset_index().rename(columns={'index': 'Параметр'})
         king_safety_df = analysis_data["Безопасность короля"].reset_index().rename(columns={'index': 'Параметр'})
-        flank_df = pd.DataFrame(list(analysis_data["Атаки"].items()), columns=['Категория', 'Значение'])
-        ideal_figure_df = pd.DataFrame(list(analysis_data["Идеальные фигуры"].items()), columns=['Фигуры', 'Позиции'])
-        dangerous_pawns_df = pd.DataFrame(list(analysis_data["Опасные пешки"].items()), columns=['Пешки', 'Позиции'])
-        df_moves = pd.DataFrame(analysis_data["Ходы"])
-        df_candidate_moves = pd.DataFrame([move.uci() for move in analysis_data["Ходы-кандидаты"]], columns=['Ходы-кандидаты'])
+        general_info_df = analysis_data["Общая информация"].reset_index().rename(columns={'index': 'Параметр'})
+        figures_info_df = analysis_data["Фигуры"].reset_index().rename(columns={'index': 'Параметр'})
+        figures_info_df["Метрика"][4] = ', '.join(map(str, figures_info_df["Метрика"][4]))
+        moves_df = analysis_data["Ходы"].reset_index(drop=True)
+        
         
         # Сохранение данных в Excel
         file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
@@ -119,11 +150,9 @@ def save_to_excel():
                 activity_df.to_excel(writer, index=False, sheet_name="Активность")
                 pawn_structure_df.to_excel(writer, index=False, sheet_name="Структура пешек")
                 king_safety_df.to_excel(writer, index=False, sheet_name="Безопасность короля")
-                flank_df.to_excel(writer, index=False, sheet_name="Атаки")
-                ideal_figure_df.to_excel(writer, index=False, sheet_name="Идеальные фигуры")
-                dangerous_pawns_df.to_excel(writer, index=False, sheet_name="Опасные пешки")
-                df_moves.to_excel(writer, index=False, sheet_name="Ходы")
-                df_candidate_moves.to_excel(writer, index=False, sheet_name="Ходы-кандидаты")
+                general_info_df.to_excel(writer, index=False, sheet_name="Общая информация")
+                figures_info_df.to_excel(writer, index=False, sheet_name="Фигуры")
+                moves_df.to_excel(writer, index=False, sheet_name="Ходы")
                 auto_adjust_columns(writer)
             messagebox.showinfo("Успех", f"Данные были успешно сохранены в {file_path}")
     except Exception as e:
@@ -201,12 +230,12 @@ def make_move_and_update_fen(board, move):
 
 
 def make_candidate_move_and_update_data():
-    if not analysis_data.get("Ходы-кандидаты"):
+    if not analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты"]:
         messagebox.showinfo("Ошибка", "Ходы-кандидаты не найдены")
         return
     try:
         # Предполагаем, что первый доступный ход-кандидат - это действительный ход
-        candidate_move = random.choice(analysis_data["Ходы-кандидаты"]).uci()
+        candidate_move = random.choice(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты"]).uci()
         new_fen, updated_board = make_move_and_update_fen(board, candidate_move)
         if new_fen:
             fen_entry.delete(0, tk.END)
