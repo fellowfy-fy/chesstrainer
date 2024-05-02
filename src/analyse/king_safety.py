@@ -45,7 +45,14 @@ def evaluate_king_safety_for_both_sides(board):
     # Оценка безопасности для обоих королей
     white_safety = evaluate_king_safety(board, chess.WHITE)
     black_safety = evaluate_king_safety(board, chess.BLACK)
+    measures = {"Пешечное прикрытие": "%",
+        "Шах": "",
+        "Мат": "",
+        "Наличие ферзей": "",
+        "Близость к своей линии": "%",
+        "Свобода": "%",
+        "Атака противника": ""}
     
     # Объединение результатов в один словарь
-    safety_metrics = {'Белые': white_safety, 'Чёрные': black_safety}
+    safety_metrics = {'Белые': white_safety, 'Чёрные': black_safety, "Единица": measures,}
     return safety_metrics

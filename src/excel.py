@@ -1,50 +1,42 @@
 import pandas as pd
-from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
+from tkinter import  filedialog, messagebox
+
+def save_to_excel(analysis_data):
+    try:
+        fen_df = pd.DataFrame({"FEN": FEN}, index=[0])
+        activity_df = analysis_data["Активность"].reset_index().rename(columns={'index': 'Параметр'})
+        pawn_structure_df = analysis_data["Структура пешек"].reset_index().rename(columns={'index': 'Параметр'})
+        king_safety_df = analysis_data["Безопасность короля"].reset_index().rename(columns={'index': 'Параметр'})
+        general_info_df = analysis_data["Общая информация"].reset_index().rename(columns={'index': 'Параметр'})
+        figures_info_df = analysis_data["Фигуры"].reset_index().rename(columns={'index': 'Параметр'})
+        figures_info_df["Метрика"][4] = ', '.join(map(str, figures_info_df["Метрика"][4]))
+        moves_df = analysis_data["Ходы"].reset_index(drop=True)
+        
+        
+        # Сохранение данных в Excel
+        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
+        if file_path:
+            with pd.ExcelWriter(file_path, engine='openpyxl', mode='w') as writer:
+                fen_df.to_excel(writer, index=False, sheet_name="FEN")
+                activity_df.to_excel(writer, index=False, sheet_name="Активность")
+                pawn_structure_df.to_excel(writer, index=False, sheet_name="Структура пешек")
+                king_safety_df.to_excel(writer, index=False, sheet_name="Безопасность короля")
+                general_info_df.to_excel(writer, index=False, sheet_name="Общая информация")
+                figures_info_df.to_excel(writer, index=False, sheet_name="Фигуры")
+                moves_df.to_excel(writer, index=False, sheet_name="Ходы")
+                auto_adjust_columns(writer)
+            messagebox.showinfo("Успех", f"Данные были успешно сохранены в {file_path}")
+    except Exception as e:
+        messagebox.showerror("Ошибка", f"Ошибка при сохранении файла: {e}")
 
 
-def save_df_to_excel(df, writer, sheet_name):
-    # Запись DataFrame на указанный лист, используя предоставленный ExcelWriter
-    df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+def auto_adjust_columns(sheet, df):
+    for col_idx, col in enumerate(df.columns):
+        # Находим максимальную ширину содержимого столбца
+        max_len = max((len(str(x)) for x in df[col]), default=0)
+        max_len = max(max_len, len(str(col)))  # Учитываем длину заголовка столбца
+        sheet.col(col_idx).width = max_len * 367  # 367 - примерное значение для ширины символа в Excel
 
 
-
-
-def auto_adjust_columns(writer):
-    for sheetname in writer.sheets:
-        worksheet = writer.sheets[sheetname]
-        for col in worksheet.columns:
-            max_length = 0
-            column = col[0].column_letter  # Get the column name
-            for cell in col:
-                try:  # Necessary to avoid error on empty cells
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except:
-                    pass
-            adjusted_width = (max_length + 2) * 1.2
-            worksheet.column_dimensions[column].width = adjusted_width
-
-
-def gather_metrics_data(ideal_pieces, dangerous_pawns, candidate_moves, board):
-    # Сбор данных в структурированный список для создания DataFrame
-    data = {
-        "Категория": [],
-        "Значение": []
-    }
-    
-    # Идеальные фигуры
-    for color, pieces in ideal_pieces.items():
-        data["Категория"].append(f"Идеальные фигуры {color.capitalize()}")
-        data["Значение"].append(', '.join(pieces))
-    
-    # Опасные пешки
-    for color, pawns in dangerous_pawns.items():
-        data["Категория"].append(f"Опасные пешки {color.capitalize()}")
-        data["Значение"].append(', '.join(pawns))
-    
-    # Ходы-кандидаты
-    data["Категория"].append("Ходы-кандидаты")
-    data["Значение"].append(', '.join([board.san(move) for move in candidate_moves]))
-    
-    return pd.DataFrame(data, columns=['Категория', 'Значение'])

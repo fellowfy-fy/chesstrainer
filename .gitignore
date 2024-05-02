@@ -7,5 +7,6 @@ chessvenv
 __pycache__
 test.py
 chess_metrics.xlsx
-
+Партии
+CSV
 *.zip

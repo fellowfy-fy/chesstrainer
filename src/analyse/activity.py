@@ -1,39 +1,55 @@
-import asyncio
 import chess
-import chess.engine
+
+# Подключаем библиотеку для работы с шахматами
 import pandas as pd
 
-
-def evaluate_activity(board):
-    metrics = {
-        'Белые': {'Мобильность': 0, 'Агрессия': 0, 'Взаимодействие': 0, 'Территория': 0, 'Безопасность': 0, 'Централизация': 0},
-        'Чёрные': {'Мобильность': 0, 'Агрессия': 0, 'Взаимодействие': 0, 'Территория': 0, 'Безопасность': 0, 'Централизация': 0}
+# Вспомогательная функция для получения названия фигуры
+def get_piece_name(piece):
+    """ Возвращает русское название фигуры по символу. """
+    if not piece:
+        return "None"
+    names = {
+        chess.PAWN: 'Пешка', chess.KNIGHT: 'Конь', chess.BISHOP: 'Слон',
+        chess.ROOK: 'Ладья', chess.QUEEN: 'Ферзь', chess.KING: 'Король'
     }
-    
+    return names.get(piece.piece_type, "Неизвестно")
+
+# Функция для анализа деятельности на доске
+def evaluate_activity(board):
+    categories = ['Мобильность', 'Агрессия', 'Взаимодействие', 'Территория', 'Безопасность', 'Централизация']
+    activity = {category: {'Белые': [], 'Чёрные': []} for category in categories}
+
     for color in [chess.WHITE, chess.BLACK]:
+        board.turn = color
         color_str = 'Белые' if color == chess.WHITE else 'Чёрные'
-        
-        # Обходим все типы фигур
+
         for piece_type in chess.PIECE_TYPES:
             for square in board.pieces(piece_type, color):
-                moves = list(board.attacks(square))
-                # Обрабатываем каждую возможную клетку, на которую может переместиться фигура
-                for target_square in moves:
-                    move = chess.Move(square, target_square)
-                    if board.is_capture(move):
-                        metrics[color_str]['Агрессия'] += 1
-                    if board.piece_at(target_square) and board.piece_at(target_square).color != color:
-                        metrics[color_str]['Взаимодействие'] += 1
+                piece = board.piece_at(square)
+                piece_name = get_piece_name(piece)
+                moves = [move for move in board.legal_moves if move.from_square == square]
+                territory = [f"{piece_name} {chess.square_name(square)} – {'своя' if board.piece_at(move.to_square) is None else 'чужая'}" for move in moves]
 
-                    metrics[color_str]['Мобильность'] += 1  # увеличиваем мобильность за каждый доступный ход
-                    if board.piece_at(target_square) is None:
-                        metrics[color_str]['Территория'] += 1  # клетка под контролем, если она пуста
+                descriptions = {
+                    'Мобильность': f"{piece_name} {chess.square_name(square)} – {len(moves)} клеток",
+                    'Агрессия': [f"{piece_name} {chess.square_name(square)} нападает на {get_piece_name(board.piece_at(m.to_square))} {chess.square_name(m.to_square)}" for m in moves if board.is_capture(m)],
+                    'Взаимодействие': [],
+                    'Территория': "\n".join(territory),
+                    'Безопасность': [],
+                    'Централизация': f"{piece_name} {chess.square_name(square)} – {'да' if square in [chess.D4, chess.E4, chess.D5, chess.E5] else 'нет'}"
+                }
 
-                    if square in [chess.D4, chess.E4, chess.D5, chess.E5]:
-                        metrics[color_str]['Централизация'] += 1  # фигура в центре
+                for key in descriptions:
+                    if isinstance(descriptions[key], list):
+                        descriptions[key] = "\n".join(descriptions[key])
+                    activity[key][color_str].append(descriptions[key])
 
-                # Подсчет атакующих фигур для каждой фигуры
-                attackers = board.attackers(not color, square)
-                metrics[color_str]['Безопасность'] += len(attackers)
-
-    return metrics
+    
+    max_length = max(len(lst) for cat in activity.values() for lst in cat.values())
+    for cat in activity.values():
+        for color_list in cat.values():
+            color_list.extend([""] * (max_length - len(color_list)))
+    
+    # Конвертируем активность в DataFrame
+    activity_df = pd.DataFrame({(outerKey, innerKey): values for outerKey, innerDict in activity.items() for innerKey, values in innerDict.items()})
+    return activity_df.transpose()
