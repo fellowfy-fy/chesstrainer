@@ -59,7 +59,7 @@ async def run_chess_analysis(engine_path, fen, canvas):
         FEN = fen
         board = chess.Board(FEN)
         # Получение аналитических данных о текущем состоянии доски
-        activity_metrics = evaluate_activity(board)
+        activity_metrics = evaluate_activity(board, figure_mapping)
         pawns_analysis = analyze_pawns(board)
         king_safety_metrics = evaluate_king_safety_for_both_sides(board)
         white_material, black_material = evaluate_material(board)
@@ -67,7 +67,7 @@ async def run_chess_analysis(engine_path, fen, canvas):
         stage = determine_game_stage(board)
         ideal_pieces = evaluate_ideal_pieces(board)
         dangerous_pawns = evaluate_dangerous_pawns(board)
-        df_moves = generate_moves_table(board)
+        df_moves = generate_moves_table(board, figure_mapping)
         candidate_moves = find_candidate_moves_for_both_sides(board)
         # old_candidate_moves = find_candidate_moves(board, chess.WHITE)
         draw_board(canvas, board)
@@ -170,9 +170,10 @@ def create_sheet(workbook, sheet_name, df):
 def save_to_excel():
     """ Сохранение результатов анализа в Excel файл с автоматически сгенерированным именем в папке 'Партии'. """
     global analysis_data
+    export_moves_to_csv(board, candidate_moves_white, candidate_moves_black)
     try:
         file_name = generate_filename()  # Функция для генерации имени файла
-        directory = "Партии"  # Имя папки для сохранения
+        directory = "Сессии"  # Имя папки для сохранения
         if not os.path.exists(directory):
             os.makedirs(directory)  # Создать папку, если она не существует
         file_path = os.path.join(directory, file_name)
@@ -220,11 +221,9 @@ def setup_gui(root):
     candidate_move_button = ttk.Button(root, text="Сделать ход-кандидат", command=make_candidate_move_and_update_data)
     candidate_move_button.pack(pady=5)
 
-    export_button = ttk.Button(root, text="Отправить в Excel", command=save_to_excel)
+    export_button = ttk.Button(root, text="Экспорт результатов", command=save_to_excel)
     export_button.pack(pady=5)
     
-    export_csv_button = ttk.Button(root, text="Экспорт в CSV", command=lambda: export_moves_to_csv(board, candidate_moves_white, candidate_moves_black))
-    export_csv_button.pack(pady=5)
     tab_control = ttk.Notebook(root)
     tab_control.pack(expand=1, fill="both")
     
@@ -240,13 +239,10 @@ def load_from_excel(fen_entry):
         sheet_figures = workbook.sheet_by_index(1)  # Второй лист для таблицы соответствия
 
         fen = sheet_fen.cell(0, 1).value  # Чтение FEN записи из ячейки A1
-        global figure_mapping
-        figure_mapping = {}
         for row_idx in range(sheet_figures.nrows):
             figure_name = sheet_figures.cell(row_idx, 0).value
             figure_position = sheet_figures.cell(row_idx, 1).value
             figure_mapping[figure_name] = figure_position
-        
         fen_entry.delete(0, tk.END)
         fen_entry.insert(0, fen)  # Отображение FEN записи в поле ввода
         messagebox.showinfo("Загрузка завершена", "FEN и соответствие фигур загружены")
@@ -309,27 +305,23 @@ def get_piece_name(piece, square):
     for name, pos in figure_mapping.items():
         if pos == square_name:
             return name  # Возвращаем альтернативное название, если нашли совпадение
-
     return standard_name  # Возвращаем стандартное название, если не нашли совпадений
 
-def get_priority(move, board, candidate_moves_white, candidate_moves_black):
-    color = 'Белые' if board.color_at(move.from_square) == chess.WHITE else 'Чёрные'
-    candidate_moves = candidate_moves_white if color == 'Белые' else candidate_moves_black
-
-    move_str = move.uci()
-
-    if move_str in candidate_moves:
-        return candidate_moves.index(move_str) + 1  
+def get_priority(move, board, candidate_moves):
 
     piece = board.piece_at(move.from_square)
     piece_priority = {
-        chess.KING: 1,
-        chess.QUEEN: 2,
-        chess.KNIGHT: 3,
-        chess.ROOK: 4,
-        chess.BISHOP: 5,
-        chess.PAWN: 6
+        chess.KING: 3,
+        chess.QUEEN: 4,
+        chess.KNIGHT: 5,
+        chess.ROOK: 6,
+        chess.BISHOP: 7,
+        chess.PAWN: 8
     }
+    if move in candidate_moves:
+        if candidate_moves.index(move) == 0 or candidate_moves.index(move) == 1:
+            return candidate_moves.index(move) + 1
+    
     return piece_priority.get(piece.piece_type, 100)
 
 
@@ -337,7 +329,7 @@ def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black):
     moves_data = []
     board.turn = chess.WHITE
     file_name = generate_filename_csv()  # Функция для генерации имени файла
-    directory = "CSV"  # Имя папки для сохранения
+    directory = "Сессии"  # Имя папки для сохранения
     if not os.path.exists(directory):
         os.makedirs(directory)  # Создать папку, если она не существует
     file_path = os.path.join(directory, file_name)
@@ -346,11 +338,11 @@ def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black):
         to_square = chess.square_name(move.to_square)
         piece = board.piece_at(move.from_square)
         captured_piece = board.piece_at(move.to_square)
-        priority = get_priority(move, board, candidate_moves_white, candidate_moves_black)
+        priority = get_priority(move, board, candidate_moves_white)
 
         move_info = {
             "Имя": f"{get_piece_name(piece, from_square)}",
-            "Тип": piece.piece_type if piece else '',
+            "Тип": 1,
             "Состояние 1": from_square,
             "Состояние 2": to_square,
             "Условие": get_piece_name(captured_piece, to_square),
@@ -364,11 +356,11 @@ def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black):
         to_square = chess.square_name(move.to_square)
         piece = board.piece_at(move.from_square)
         captured_piece = board.piece_at(move.to_square)
-        priority = get_priority(move, board, candidate_moves_white, candidate_moves_black)
+        priority = get_priority(move, board, candidate_moves_black)
 
         move_info = {
             "Имя": f"{get_piece_name(piece, from_square)}",
-            "Тип": piece.piece_type if piece else '',
+            "Тип": 2,
             "Состояние 1": from_square,
             "Состояние 2": to_square,
             "Условие": get_piece_name(captured_piece, to_square),
@@ -378,20 +370,17 @@ def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black):
         
 
     # Сортируем ходы по приоритету перед экспортом
+    moves_data.sort(key=lambda x: x['Тип'])
     moves_data.sort(key=lambda x: x['Приоритет'])
 
     df = pd.DataFrame(moves_data)
     df.to_csv(file_path, index=False, sep=';')
-    messagebox.showinfo("Экспорт в CSV", f"Данные были успешно сохранены в {file_path}")
 
 
 def make_move_and_update_fen(board, move):
     """ Выполнение хода и обновление FEN. """
     try:
         move = chess.Move.from_uci(move)
-        print(board.turn)
-        print(move)
-        print(board.legal_moves)
         if move in board.legal_moves:
             board.push(move)
             return board.fen(), board
@@ -403,10 +392,10 @@ def make_move_and_update_fen(board, move):
         return None, None
 def make_candidate_move_and_update_data():
     try:
-        # candidate_move = random.choice(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Чёрные"]).uci()
-        candidate_move = random.choice(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Белые"]).uci()
-        print(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Белые"])
-        print(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Чёрные"])
+        if board.turn == False:
+            candidate_move = random.choice(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Чёрные"]).uci()
+        else:
+            candidate_move = random.choice(analysis_data["Фигуры"]["Метрика"]["Ходы-кандидаты Белые"]).uci()
         new_fen, updated_board = make_move_and_update_fen(board, candidate_move)
         if new_fen:
             fen_entry.delete(0, tk.END)
@@ -422,6 +411,8 @@ root.bind('<Key>', lambda event: on_paste(event, fen_entry))
 canvas = tk.Canvas(root, width=240, height=240)
 canvas.pack()
 
+global figure_mapping
+figure_mapping = {}
 fen_entry = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 loop = asyncio.get_event_loop()

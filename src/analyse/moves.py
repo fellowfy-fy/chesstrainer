@@ -1,15 +1,28 @@
 import chess
 import pandas as pd
 
-def generate_moves_table(board):
-    piece_names = {
-        'P': 'Пешка',
-        'N': 'Конь',
-        'B': 'Слон',
-        'R': 'Ладья',
-        'Q': 'Ферзь',
-        'K': 'Король'
+def get_piece_name(piece, square, figure_mapping):
+    """ Возвращает альтернативное название фигуры или стандартное, основываясь на позиции. """
+    if piece is None:
+        return ''
+    # Словарь стандартных названий фигур
+    standard_names = {
+        chess.PAWN: 'Пешка',
+        chess.KNIGHT: 'Конь',
+        chess.BISHOP: 'Слон',
+        chess.ROOK: 'Ладья',
+        chess.QUEEN: 'Ферзь',
+        chess.KING: 'Король'
     }
+    standard_name = standard_names.get(piece.piece_type, 'Неизвестно')
+    square_name = square
+    # Проверяем, содержится ли текущая позиция в значении словаря figure_mapping
+    for name, pos in figure_mapping.items():
+        if pos == square_name:
+            return name  # Возвращаем альтернативное название, если нашли совпадение
+    return standard_name  # Возвращаем стандартное название, если не нашли совпадений
+
+def generate_moves_table(board, figure_mapping):
 
     moves_white = []
     moves_black = []
@@ -22,7 +35,7 @@ def generate_moves_table(board):
     for move in board.legal_moves:
         board.push(move)
         piece = board.piece_at(move.to_square)
-        piece_name = piece_names[piece.symbol().upper()] if piece else "None"
+        piece_name = get_piece_name(piece, chess.square_name(move.from_square), figure_mapping)
         moves_white.append(f"{piece_name} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
         board.pop()
 
@@ -31,7 +44,7 @@ def generate_moves_table(board):
     for move in board.legal_moves:
         board.push(move)
         piece = board.piece_at(move.to_square)
-        piece_name = piece_names[piece.symbol().upper()] if piece else "None"
+        piece_name = get_piece_name(piece, chess.square_name(move.from_square), figure_mapping)
         moves_black.append(f"{piece_name} {chess.square_name(move.from_square)} -> {chess.square_name(move.to_square)}")
         board.pop()
 

@@ -3,11 +3,11 @@ import random
 
 def find_candidate_moves(board, color):
     candidate_moves = []
-    legal_moves = list(board.legal_moves)
     original_turn = board.turn  # Сохраняем текущий ход для восстановления после операций
 
     # Установка текущего хода в соответствии с заданным цветом
     board.turn = color
+    legal_moves = list(board.legal_moves)
 
     # Проверка на шах и мат
     if board.is_checkmate():
