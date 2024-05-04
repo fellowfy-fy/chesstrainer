@@ -186,26 +186,31 @@ def on_paste(event, fen_entry):
 
 def setup_gui(root):
     """ Настройка графического интерфейса пользователя. """
+    style = ttk.Style()
+    style.configure("Special.TButton", background="green", foreground="black", font=('Arial', 12))
+    
     fen_entry = ttk.Entry(root, width=50)
     fen_entry.pack(pady=5)
     
-    paste_button = ttk.Button(root, text="Вставить из Буфера Обмена", command=lambda: paste_from_clipboard(fen_entry))
-    paste_button.pack(pady=5)
+    button_frame = ttk.Frame(root)
+    button_frame.pack(fill='x', expand=True, padx=10, pady=10)
 
-    load_excel_button = ttk.Button(root, text="Загрузить из Excel", command=lambda: load_from_excel(fen_entry))
-    load_excel_button.pack(pady=5)
+    paste_button = ttk.Button(button_frame, text="Вставить из Буфера Обмена", command=lambda: paste_from_clipboard(fen_entry))
+    paste_button.pack(side='left', fill='x', expand=True, padx=5, pady=5)
+
+    load_excel_button = ttk.Button(button_frame, text="Загрузить из Excel", command=lambda: load_from_excel(fen_entry))
+    load_excel_button.pack(side='left', fill='x', expand=True, padx=5, pady=5)
     
-    run_button = ttk.Button(root, text="Начать аналитику", command=lambda: run_analysis_in_thread(tab_control, engine_path, fen_entry.get()))
-    run_button.pack(pady=5)
+    run_button = ttk.Button(button_frame, text="Начать аналитику", command=lambda: run_analysis_in_thread(tab_control, engine_path, fen_entry.get()), style="Special.TButton")
+    run_button.pack(side='left', fill='x', expand=True, padx=5, pady=5)
 
-    candidate_move_button = ttk.Button(root, text="Сделать ход-кандидат", command=make_candidate_move_and_update_data)
-    candidate_move_button.pack(pady=5)
+    candidate_move_button = ttk.Button(button_frame, text="Сделать ход-кандидат", command=make_candidate_move_and_update_data)
+    candidate_move_button.pack(side='left', fill='x', expand=True, padx=5, pady=5)
 
-    export_button = ttk.Button(root, text="Экспорт результатов", command=save_to_excel)
-    export_button.pack(pady=5)
-    
+    export_button = ttk.Button(button_frame, text="Экспорт результатов", command=save_to_excel)
+    export_button.pack(side='left', fill='x', expand=True, padx=5, pady=5)
     tab_control = ttk.Notebook(root)
-    tab_control.pack(expand=1, fill="both")
+    tab_control.pack(expand=1, fill="both", padx=10, pady=10)
     
     
     return tab_control, fen_entry
@@ -379,6 +384,16 @@ def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black, dir
 
     # Сортировка по типу и приоритету перед экспортом
     moves_data.sort(key=lambda x: (x['Тип'], x['Приоритет']))
+    
+    for index, move in enumerate(moves_data, 1):# начинаем с 1 для номера строки в CSV
+        attacked = move['Условие']
+        attacked2 = move['Состояние 2']
+        for index, move2 in enumerate(moves_data, 1):
+            if move2["Имя"] == attacked and move2["Состояние 1"] == attacked2:
+                move['Условие'] = f"{index + 1}"
+        
+
+    
     df = pd.DataFrame(moves_data)
     df.to_csv(file_path, index=False, sep=';')
 
@@ -411,7 +426,7 @@ def make_candidate_move_and_update_data():
         messagebox.showinfo("Ошибка", f"Ошибка при выполнении хода: {e}")
 
 root = tk.Tk()
-
+root.geometry('800x600')
 root.bind('<Key>', lambda event: on_paste(event, fen_entry))
 canvas = tk.Canvas(root, width=240, height=240)
 canvas.pack()
