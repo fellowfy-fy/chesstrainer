@@ -141,6 +141,14 @@ def generate_filename():
     global save_counter, last_save_date
     current_date = datetime.datetime.now().strftime("%d-%m-%Y")
     current_time = datetime.datetime.now().strftime("%H-%M-%S")
+    return f"{current_date}_{current_time}/"
+
+
+def generate_filename_xls():
+    """ Генерирует уникальное имя файла на основе текущей даты и количества сохранений. """
+    global save_counter, last_save_date
+    current_date = datetime.datetime.now().strftime("%d-%m-%Y")
+    current_time = datetime.datetime.now().strftime("%H-%M-%S")
     return f"{current_date}_{current_time}.xls"
 
 def generate_filename_csv():
@@ -167,35 +175,7 @@ def create_sheet(workbook, sheet_name, df):
         for row_idx, value in enumerate(column, start=1):
             sheet.write(row_idx, col_idx, value)
 
-def save_to_excel():
-    """ Сохранение результатов анализа в Excel файл с автоматически сгенерированным именем в папке 'Партии'. """
-    global analysis_data
-    export_moves_to_csv(board, candidate_moves_white, candidate_moves_black)
-    try:
-        file_name = generate_filename()  # Функция для генерации имени файла
-        directory = "Сессии"  # Имя папки для сохранения
-        if not os.path.exists(directory):
-            os.makedirs(directory)  # Создать папку, если она не существует
-        file_path = os.path.join(directory, file_name)
 
-        workbook = xlwt.Workbook()  # Создаем книгу в формате xls
-        # Создаем листы и добавляем данные с автоматической настройкой ширины столбцов
-        create_sheet(workbook, "FEN", pd.DataFrame({"FEN": FEN}, index=[0]))
-        activity_df = analysis_data["Активность"].reset_index()
-        create_sheet(workbook, "Активность", activity_df)
-        create_sheet(workbook, "Структура пешек", analysis_data["Структура пешек"].reset_index().rename(columns={'index': 'Параметр'}))
-        create_sheet(workbook, "Безопасность короля", analysis_data["Безопасность короля"].reset_index().rename(columns={'index': 'Параметр'}))
-        create_sheet(workbook, "Общая информация", analysis_data["Общая информация"].reset_index().rename(columns={'index': 'Параметр'}))
-        figures_info_df = analysis_data["Фигуры"].reset_index().rename(columns={'index': 'Параметр'})
-        figures_info_df['Метрика'][4] = ', '.join(map(str, figures_info_df['Метрика'][4]))
-        figures_info_df['Метрика'][5] = ', '.join(map(str, figures_info_df['Метрика'][5]))
-        create_sheet(workbook, "Фигуры", figures_info_df)
-        create_sheet(workbook, "Ходы", analysis_data["Ходы"].reset_index(drop=True))
-        
-        workbook.save(file_path)  # Сохраняем книгу
-        messagebox.showinfo("Успех", f"Данные были успешно сохранены в {file_path}")
-    except Exception as e:
-        messagebox.showerror("Ошибка", f"Ошибка при сохранении файла: {e}")
         
 def on_paste(event, fen_entry):
     """ Обработчик нажатия Ctrl+V. """
@@ -285,6 +265,37 @@ def draw_board(canvas, board):
 
 # Инвертированный словарь, где ключами являются позиции, а значениями — альтернативные имена
 
+def save_to_excel():
+    """ Сохранение результатов анализа в Excel файл с автоматически сгенерированным именем в папке 'Партии'. """
+    file_name = generate_filename_xls()  # Функция для генерации имени файла
+    directory = "Сессии" + "/" + generate_filename()  # Имя папки для сохранения
+    if not os.path.exists(directory):
+        os.makedirs(directory)  # Создать папку, если она не существует
+    file_path = os.path.join(directory, file_name)
+    global analysis_data
+    export_moves_to_csv(board, candidate_moves_white, candidate_moves_black, directory)
+    try:
+        
+
+        workbook = xlwt.Workbook()  # Создаем книгу в формате xls
+        # Создаем листы и добавляем данные с автоматической настройкой ширины столбцов
+        create_sheet(workbook, "FEN", pd.DataFrame({"FEN": FEN}, index=[0]))
+        activity_df = analysis_data["Активность"].reset_index()
+        create_sheet(workbook, "Активность", activity_df)
+        create_sheet(workbook, "Структура пешек", analysis_data["Структура пешек"].reset_index().rename(columns={'index': 'Параметр'}))
+        create_sheet(workbook, "Безопасность короля", analysis_data["Безопасность короля"].reset_index().rename(columns={'index': 'Параметр'}))
+        create_sheet(workbook, "Общая информация", analysis_data["Общая информация"].reset_index().rename(columns={'index': 'Параметр'}))
+        figures_info_df = analysis_data["Фигуры"].reset_index().rename(columns={'index': 'Параметр'})
+        figures_info_df['Метрика'][4] = ', '.join(map(str, figures_info_df['Метрика'][4]))
+        figures_info_df['Метрика'][5] = ', '.join(map(str, figures_info_df['Метрика'][5]))
+        create_sheet(workbook, "Фигуры", figures_info_df)
+        create_sheet(workbook, "Ходы", analysis_data["Ходы"].reset_index(drop=True))
+        
+        workbook.save(file_path)  # Сохраняем книгу
+        messagebox.showinfo("Успех", f"Данные были успешно сохранены в {file_path}")
+    except Exception as e:
+        messagebox.showerror("Ошибка", f"Ошибка при сохранении файла: {e}")
+
 def get_piece_name(piece, square):
     """ Возвращает альтернативное название фигуры или стандартное, основываясь на позиции. """
     if piece is None:
@@ -325,57 +336,51 @@ def get_priority(move, board, candidate_moves):
     return piece_priority.get(piece.piece_type, 100)
 
 
-def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black):
+def export_moves_to_csv(board, candidate_moves_white, candidate_moves_black, directory):
     moves_data = []
-    board.turn = chess.WHITE
     file_name = generate_filename_csv()  # Функция для генерации имени файла
-    directory = "Сессии"  # Имя папки для сохранения
-    if not os.path.exists(directory):
-        os.makedirs(directory)  # Создать папку, если она не существует
     file_path = os.path.join(directory, file_name)
-    for move in board.legal_moves:
-        from_square = chess.square_name(move.from_square)
-        to_square = chess.square_name(move.to_square)
-        piece = board.piece_at(move.from_square)
-        captured_piece = board.piece_at(move.to_square)
-        priority = get_priority(move, board, candidate_moves_white)
 
-        move_info = {
-            "Имя": f"{get_piece_name(piece, from_square)}",
-            "Тип": 1,
-            "Состояние 1": from_square,
-            "Состояние 2": to_square,
-            "Условие": get_piece_name(captured_piece, to_square),
-            "Приоритет": priority
-        }
-        moves_data.append(move_info)
-        
-    board.turn = chess.BLACK
-    for move in board.legal_moves:
-        from_square = chess.square_name(move.from_square)
-        to_square = chess.square_name(move.to_square)
-        piece = board.piece_at(move.from_square)
-        captured_piece = board.piece_at(move.to_square)
-        priority = get_priority(move, board, candidate_moves_black)
+    for color, candidate_moves in [(chess.WHITE, candidate_moves_white), (chess.BLACK, candidate_moves_black)]:
+        board.turn = color  # Устанавливаем ход нужного цвета
+        all_pieces = {square: board.piece_at(square) for piece_type in chess.PIECE_TYPES for square in board.pieces(piece_type, color)}
 
-        move_info = {
-            "Имя": f"{get_piece_name(piece, from_square)}",
-            "Тип": 2,
-            "Состояние 1": from_square,
-            "Состояние 2": to_square,
-            "Условие": get_piece_name(captured_piece, to_square),
-            "Приоритет": priority
-        }
-        moves_data.append(move_info)
-        
+        for square, piece in all_pieces.items():
+            from_square = chess.square_name(square)
+            legal_moves = [move for move in board.legal_moves if move.from_square == square]
 
-    # Сортируем ходы по приоритету перед экспортом
-    moves_data.sort(key=lambda x: x['Тип'])
-    moves_data.sort(key=lambda x: x['Приоритет'])
+            # Если у фигуры нет легальных ходов, добавляем запись с пустыми значениями
+            if not legal_moves:
+                move_info = {
+                    "Имя": get_piece_name(piece, from_square),
+                    "Тип": 1 if color == chess.WHITE else 2,
+                    "Состояние 1": from_square,
+                    "Состояние 2": "",
+                    "Условие": "",
+                    "Приоритет": 100  # Приоритет для фигур без ходов
+                }
+                moves_data.append(move_info)
 
+            # Обработка легальных ходов
+            for move in legal_moves:
+                to_square = chess.square_name(move.to_square)
+                captured_piece = board.piece_at(move.to_square)
+                priority = get_priority(move, board, candidate_moves)
+
+                move_info = {
+                    "Имя": get_piece_name(piece, from_square),
+                    "Тип": 1 if color == chess.WHITE else 2,
+                    "Состояние 1": from_square,
+                    "Состояние 2": to_square,
+                    "Условие": get_piece_name(captured_piece, to_square) if captured_piece else '',
+                    "Приоритет": priority
+                }
+                moves_data.append(move_info)
+
+    # Сортировка по типу и приоритету перед экспортом
+    moves_data.sort(key=lambda x: (x['Тип'], x['Приоритет']))
     df = pd.DataFrame(moves_data)
     df.to_csv(file_path, index=False, sep=';')
-
 
 def make_move_and_update_fen(board, move):
     """ Выполнение хода и обновление FEN. """

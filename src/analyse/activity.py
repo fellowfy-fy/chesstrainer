@@ -40,14 +40,13 @@ def evaluate_activity(board, figure_mapping):
                 square_name = chess.square_name(square)
                 piece_name = get_piece_name(piece, square_name, figure_mapping)
                 moves = [move for move in board.legal_moves if move.from_square == square]
-                territory = [f"{piece_name} {chess.square_name(square)} – {'своя' if board.piece_at(move.to_square) is None else 'чужая'}" for move in moves]
 
                 descriptions = {
                     'Мобильность': f"{piece_name} {chess.square_name(square)} – {len(moves)} клеток",
                     'Агрессия': [f"{piece_name} {chess.square_name(square)} нападает на {get_piece_name(board.piece_at(m.to_square), chess.square_name(m.to_square), figure_mapping)} {chess.square_name(m.to_square)}" for m in moves if board.is_capture(m)],
-                    'Взаимодействие': [],
-                    'Территория': "\n".join(territory),
-                    'Безопасность': [],
+                    'Взаимодействие': evaluate_interaction(board, figure_mapping, color, square),
+                    'Территория': evaluate_territory(board, color, square, figure_mapping),
+                    'Безопасность': evaluate_security(board, color, square, figure_mapping),
                     'Централизация': f"{piece_name} {chess.square_name(square)} – {'да' if square in [chess.D4, chess.E4, chess.D5, chess.E5] else 'нет'}"
                 }
 
@@ -65,3 +64,57 @@ def evaluate_activity(board, figure_mapping):
     # Конвертируем активность в DataFrame
     activity_df = pd.DataFrame({(outerKey, innerKey): values for outerKey, innerDict in activity.items() for innerKey, values in innerDict.items()})
     return activity_df.transpose()
+
+
+def evaluate_interaction(board, figure_mapping, color, square):
+    defenders = board.attackers(color, square)
+    piece = board.piece_at(square)
+    piece_name = get_piece_name(piece, square, figure_mapping)
+    square_name = chess.square_name(square)
+    interaction = ""
+    if defenders:
+        defended_by = []
+        for defender in defenders:
+            if defender != square:  # Исключаем самозащиту фигуры
+                defender_piece = board.piece_at(defender)
+                defending_piece_name = get_piece_name(defender_piece, defender, figure_mapping)
+                defending_square_name = chess.square_name(defender)
+                defended_by.append(f"{defending_piece_name} {defending_square_name}")
+        
+        if defended_by:
+            interaction = f"{piece_name} {square_name} защищен " + ", ".join(defended_by)
+    
+    return interaction
+
+def evaluate_security(board, color, square, figure_mapping):
+    attack_str = ""
+    enemy_color = not color
+    attackers = board.attackers(enemy_color, square)
+    piece = board.piece_at(square)
+    if attackers:
+        attacked_piece_name = get_piece_name(piece, square, figure_mapping)
+        attacked_square_name = chess.square_name(square)
+        attackers_info = []
+
+        for attacker in attackers:
+            attacker_name = board.piece_at(attacker)
+            attacking_piece_name = get_piece_name(attacker_name, attacker, figure_mapping)
+            attacking_square_name = chess.square_name(attacker)
+            attackers_info.append(f"{attacking_piece_name} {attacking_square_name}")
+
+        if attackers_info:
+            attack_str = f"{attacked_piece_name} {attacked_square_name} – атакован {', '.join(attackers_info)}"
+
+    return attack_str
+
+def evaluate_territory(board, color, square, figure_mapping):
+
+    own_territory_rows = range(0, 4) if color == chess.WHITE else range(4, 8)
+    piece = board.piece_at(square)
+    piece_name = get_piece_name(piece, square, figure_mapping)
+    row = chess.square_rank(square)
+    territory_status = 'своя' if row in own_territory_rows else 'чужая'
+    square_name = chess.square_name(square)
+    territory_info = f"{piece_name} {square_name} – {territory_status}"
+
+    return territory_info
